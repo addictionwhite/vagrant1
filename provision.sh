@@ -1,56 +1,68 @@
 
-#VIM$B$N%$%s%9%H!<%k(B
+# install vim 
 sudo yum -y install vim
 
-#httpd$B$N%$%s%9%H!<%k(B
+# install apache
 sudo yum -y install httpd
-#httpd$B$N%9%?!<%H!J(BApache$B%5!<%P5/F0!K(B
+# start apache
 sudo systemctl start httpd
-#Apache$B%5!<%P$N<+F05/F0(B
+# add apache to the not  auto start
 sudo systemctl enable httpd
 
-
-#$B%U%!%$%d!<%&%)!<%k$NDd;_(B
+# stop firewall
 sudo systemctl stop firewalld
-#$B%U%!%$%d!<%&%)!<%k$r(BOS$B5/F0;~$K<+F0Dd;_$5$;$k(B
+# add firewall to the not  auto start
 sudo systemctl disable firewalld
 
-#Web$B$GI=<($9$k%U%)%k%@$r:o=|(B
+# set vagrant share folder
 sudo rm -rf /var/www/html
-#Web$B$GI=<($9$k%U%)%k%@$r!%6&M-%U%)%k%@$G$"$k(B/vagrant$B$H%7%s%\%j%C%/%j%s%/(B
 sudo ln -fs /vagrant /var/www/html
 
 
-#index.html$B$N%U%!%$%k$N:n@.(B
+# add index.htm
 cd /vagrant
 touch index.html
 echo "<!DOCTYPE html><html><head><meta charset='utf-8'><title>test</title></head><body>Hello World</body></html>" > index.html
 
 
-#Epel$B%j%]%8%H%j$NDI2C(B
+# install Epel
 sudo yum -y install epel-release
-#Remi$B%j%]%8%H%j$NDI2C(B
+# install Remi
 wget http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
 sudo rpm -ivh ./remi-release-7.rpm
 
-
-#php$B$N%$%s%9%H!<%k(B
+# install php
 sudo yum -y --enablerepo=remi-php70,remi install php php-mcrypt php-mbstring php-fpm php-gd php-xml php-pdo php-mysqlnd php-devel
 
 
-#MariaDB$B$N:o=|(B(MySQL$B$H6%9g$r5/$3$9$?$a(B)
-sudo yum -y remove mariadb-libs
+# mariaDBとの競合を防ぐため
+yum -y remove mariadb-libs
+rm -rf /var/lib/mysql
+
+# https://dev.mysql.com/downloads/repo/yum/を参照
+yum -y localinstall http://dev.mysql.com/get/mysql57-community-release-el7-11.noarch.rpm
+yum -y install mysql-community-server
+
+# 必要最小限のMySQLの設定内容を書き込む
+cat << __CONF__ >> /etc/my.cnf
+character-set-server = utf8
+default_password_lifetime = 0
+__CONF__
+
+# MySQLの自動起動を有効化し起動する
+systemctl enable mysqld
+systemctl start mysqld
+# 初期パスワードを取得する
+password=`cat /var/log/mysqld.log | grep "A temporary password" | tr ' ' '\n' | tail -n1`
+
+mysql -u root -p${password} --connect-expired-password < /vagrant/provisioner.sql
 
 
-#MySQL$B$N%$%s%9%H!<%k(B(http://dev.mysql.com/downloads/repo/yum/)
-sudo yum -y install http://dev.mysql.com/get/mysql57-community-release-el6-7.noarch.rpm
-sudo yum -y install mysql-community-server
-
-
-#Composer$B$N%$%s%9%H!<%k(B
+#Composer install
 curl -sS https://getcomposer.org/installer | php
 sudo mv composer.phar /usr/local/bin/composer
 
 
-#git$B$N%$%s%9%H!<%k(B
+#git install
 sudo yum -y install git
+
